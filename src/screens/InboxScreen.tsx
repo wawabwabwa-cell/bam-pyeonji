@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import { Clock, Star, Bell } from 'lucide-react'
 import type { Letter } from '../types'
 import { supabase } from '../lib/supabase'
+import { getClientId } from '../lib/clientId'
+
+type MailTab = 'inbox' | 'sent' | 'drafts'
 
 interface Props {
   onRead: (letter: Letter) => void
@@ -73,6 +76,8 @@ function timeUntil(date: Date): string {
 
 export default function InboxScreen({ onRead, onWrite }: Props) {
   const [letters, setLetters] = useState<Letter[]>(MOCK_LETTERS)
+  const [activeTab, setActiveTab] = useState<MailTab>('inbox')
+  const clientId = getClientId()
 
   useEffect(() => {
     async function loadLetters() {
@@ -86,7 +91,16 @@ export default function InboxScreen({ onRead, onWrite }: Props) {
         return
       }
 
-      const mappedLetters: Letter[] = (data ?? []).map((item) => {
+      const rows = data ?? []
+
+      const filteredRows =
+        activeTab === 'sent'
+          ? rows.filter((item) => item.sender_client_id === clientId)
+          : activeTab === 'drafts'
+            ? []
+            : rows.filter((item) => item.sender_client_id !== clientId)
+
+      const mappedLetters: Letter[] = filteredRows.map((item) => {
         const deliveredAt = new Date(item.delivered_at)
 
         return {
@@ -109,7 +123,7 @@ export default function InboxScreen({ onRead, onWrite }: Props) {
     }
 
     loadLetters()
-  }, [])
+  }, [activeTab])
 
   async function handleRead(letter: Letter) {
     if (!letter.isDelivered) return
@@ -174,19 +188,24 @@ export default function InboxScreen({ onRead, onWrite }: Props) {
         {/* Tabs */}
         <div className="flex gap-0 mt-4 rounded-xl overflow-hidden"
           style={{ background: 'rgba(15,21,37,0.6)', border: '1px solid rgba(232,192,96,0.08)' }}>
-          {['받은 편지', '보낸 편지', '임시저장'].map((tab, i) => (
-            <button
-              key={tab}
-              className="flex-1 py-2.5 text-xs font-sans transition-all"
-              style={{
-                background: i === 0 ? 'rgba(212,168,50,0.15)' : 'transparent',
-                color: i === 0 ? '#e8c060' : '#445588',
-                borderRight: i < 2 ? '1px solid rgba(232,192,96,0.08)' : 'none',
-              }}
-            >
-              {tab}
-            </button>
-          ))}
+          {[
+              { label: '받은 편지', value: 'inbox' as MailTab },
+              { label: '보낸 편지', value: 'sent' as MailTab },
+              { label: '임시저장', value: 'drafts' as MailTab },
+            ].map((tab, i) => (
+              <button
+                key={tab.value}
+                onClick={() => setActiveTab(tab.value)}
+                className="flex-1 py-2.5 text-xs font-sans transition-all"
+                style={{
+                  background: activeTab === tab.value ? 'rgba(212,168,50,0.15)' : 'transparent',
+                  color: activeTab === tab.value ? '#e8c060' : '#445588',
+                  borderRight: i < 2 ? '1px solid rgba(232,192,96,0.08)' : 'none',
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
         </div>
       </div>
 

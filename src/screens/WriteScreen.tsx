@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ChevronLeft, Clock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { getClientId } from '../lib/clientId'
 
 interface Props {
   onSend: () => void
@@ -18,6 +19,7 @@ export default function WriteScreen({ onSend, onBack }: Props) {
       nickname: '익명의 밤손님',
       content: content.trim(),
       question_prompt: '요즘 가장 자주 생각나는 장소가 있나요?',
+      sender_client_id: getClientId(),
       delivered_at: new Date().toISOString(),
     })
 
