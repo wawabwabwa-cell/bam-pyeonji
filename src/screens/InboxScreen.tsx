@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react'
 import { Clock, Star, Bell } from 'lucide-react'
 import type { Letter } from '../types'
+import { supabase } from '../lib/supabase'
 
 interface Props {
   onRead: (letter: Letter) => void
@@ -70,7 +72,46 @@ function timeUntil(date: Date): string {
 }
 
 export default function InboxScreen({ onRead, onWrite }: Props) {
-  const unread = MOCK_LETTERS.filter((l) => !l.isRead && l.isDelivered).length
+  const [letters, setLetters] = useState<Letter[]>(MOCK_LETTERS)
+
+  useEffect(() => {
+    async function loadLetters() {
+      const { data, error } = await supabase
+        .from('letters_public')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('편지 불러오기 실패:', error.message)
+        return
+      }
+
+      const mappedLetters: Letter[] = (data ?? []).map((item) => {
+        const deliveredAt = new Date(item.delivered_at)
+
+        return {
+          id: item.id,
+          from: item.nickname || '익명의 밤손님',
+          preview:
+            item.content.length > 42
+              ? `${item.content.slice(0, 42)}...`
+              : item.content,
+          content: item.content,
+          sentAt: new Date(item.created_at),
+          deliveredAt,
+          isRead: item.is_read ?? false,
+          isDelivered: deliveredAt.getTime() <= Date.now(),
+          questionPrompt: item.question_prompt || '',
+        }
+      })
+
+      setLetters(mappedLetters)
+    }
+
+    loadLetters()
+  }, [])
+
+  const unread = letters.filter((l) => !l.isRead && l.isDelivered).length
 
   return (
     <div
@@ -127,7 +168,7 @@ export default function InboxScreen({ onRead, onWrite }: Props) {
 
       {/* Letter list */}
       <div className="relative z-10 px-5 flex-1 overflow-y-auto pb-24 flex flex-col gap-3">
-        {MOCK_LETTERS.map((letter) => (
+        {letters.map((letter) => (
           <button
             key={letter.id}
             className="w-full text-left rounded-2xl p-4 transition-all active:scale-98"

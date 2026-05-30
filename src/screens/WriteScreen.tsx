@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ChevronLeft, Clock } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 
 interface Props {
   onSend: () => void
@@ -10,11 +11,26 @@ export default function WriteScreen({ onSend, onBack }: Props) {
   const [content, setContent] = useState('')
   const [showSent, setShowSent] = useState(false)
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (content.trim().length < 20) return
+
+    const { error } = await supabase.from('letters_public').insert({
+      nickname: '익명의 밤손님',
+      content: content.trim(),
+      question_prompt: '요즘 가장 자주 생각나는 장소가 있나요?',
+      delivered_at: new Date().toISOString(),
+    })
+
+    if (error) {
+      console.error('편지 저장 실패:', error.message)
+      alert('편지 저장에 실패했어요. 잠시 후 다시 시도해주세요.')
+      return
+    }
+
     setShowSent(true)
     setTimeout(() => {
       setShowSent(false)
+      setContent('')
       onSend()
     }, 2200)
   }
