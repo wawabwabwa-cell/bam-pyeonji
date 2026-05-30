@@ -111,6 +111,30 @@ export default function InboxScreen({ onRead, onWrite }: Props) {
     loadLetters()
   }, [])
 
+  async function handleRead(letter: Letter) {
+    if (!letter.isDelivered) return
+
+    if (!letter.isRead) {
+      const { error } = await supabase
+        .from('letters_public')
+        .update({ is_read: true })
+        .eq('id', letter.id)
+
+      if (error) {
+        console.error('읽음 처리 실패:', error.message)
+        return
+      }
+
+      setLetters((prev) =>
+        prev.map((l) =>
+          l.id === letter.id ? { ...l, isRead: true } : l
+        )
+      )
+    }
+
+    onRead({ ...letter, isRead: true })
+  }
+
   const unread = letters.filter((l) => !l.isRead && l.isDelivered).length
 
   return (
@@ -182,7 +206,7 @@ export default function InboxScreen({ onRead, onWrite }: Props) {
                 ? '1px solid rgba(232,192,96,0.2)'
                 : '1px solid rgba(232,192,96,0.06)',
             }}
-            onClick={() => letter.isDelivered && onRead(letter)}
+            onClick={() => handleRead(letter)}
             disabled={!letter.isDelivered}
           >
             <div className="flex items-start justify-between mb-2">
